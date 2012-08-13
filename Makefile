@@ -19,11 +19,11 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 
-
+KERNEL ?= /lib/modules/$(shell uname -r)/build
 obj-m += gpiotoggling.o
 
 all:
-		make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+		make -C $(KERNEL) M=$(PWD) modules
 
 clean:
-		make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+		make -C $(KERNEL) M=$(PWD) clean

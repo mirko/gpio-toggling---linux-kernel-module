@@ -33,33 +33,46 @@
 
 static struct kobject *dev;
 
-static int start = 0;
-static int stop = 0;
-static unsigned int count = 1; // DANGEROUS - 0 will end up in an infinite loop and stall your system
-static unsigned int interval = 0; // long
-static char loop = 0; // DANGEROUS - >=0 will end up in an infinite loop and stall your system
-static unsigned int verbosity = 0; // u8 // TODO: implement event logging handling in some way
+static long int start = 0;
+static long int stop = 0;
+static unsigned long int count = 1; // DANGEROUS - 0 will end up in an infinite loop and stall your system
+static unsigned long int interval = 1000; // long
+static long int loop = 0; // DANGEROUS - >=0 will end up in an infinite loop and stall your system
+static unsigned long int verbosity = 0; // u8 // TODO: implement event logging handling in some way
 
 static char lock = 0; // u8
+
+int pin_on(int pin) {
+    int valid = gpio_is_valid(pin);
+    if (valid) {
+        int ii;
+        printk(KERN_ALERT "GPIO <%i> is meant to be valid - configuring as output pin\n", pin);
+        gpio_direction_output(pin, 0);
+        if (verbosity) printk(KERN_ALERT "  set to high\n");
+        gpio_set_value(pin, 1);
+    }
+    return valid;
+}
+
+int pin_off(int pin) {
+    int valid = gpio_is_valid(pin);
+    if (valid) {
+        int ii;
+        printk(KERN_ALERT "GPIO <%i> is meant to be valid - configuring as output pin\n", pin);
+        gpio_direction_output(pin, 0);
+        if (verbosity) printk(KERN_ALERT "  set to low\n");
+        gpio_set_value(pin, 0);
+    }
+}
 
 int gpiotoggling(void) {
 	int i;
 	for (i=start; i<=stop; i++)
 	{
-		int valid = gpio_is_valid(i);
-		if (valid) {
-			printk(KERN_ALERT "GPIO <%i> is meant to be valid - configuring as output pin\n", i);
-			gpio_direction_output(i, 0);
-			int ii;
-			for (ii=0; (ii<count || count==0); ii++) {
+        if (pin_on(i)) {
 				ndelay(interval);
-				//printk(KERN_ALERT "  set to high");
-				gpio_set_value(i, 1);
-				ndelay(interval);
-				//printk(KERN_ALERT "  set to low");
-				gpio_set_value(i, 0);
-			}
-		}
+                pin_off(i);
+        }
 	}
 	return 0;
 }
@@ -70,33 +83,33 @@ struct device *tmp_dev;
 static ssize_t start_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: start\n");
-	return sprintf(buf, "%i\n", start);
+	return sprintf(buf, "%li\n", start);
 }
 static ssize_t stop_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: stop\n");
-	return sprintf(buf, "%i\n", stop);
+	return sprintf(buf, "%li\n", stop);
 }
 static ssize_t count_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: count\n");
-	return sprintf(buf, "%u\n", count);
+	return sprintf(buf, "%lu\n", count);
 }
 static ssize_t interval_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: interval\n");
-	return sprintf(buf, "%u\n", interval);
+	return sprintf(buf, "%lu\n", interval);
 }
 static ssize_t loop_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: loop\n");
 	printk("FOOOOOOOO\n");
-	return sprintf(buf, "%i\n", loop);
+	return sprintf(buf, "%li\n", loop);
 }
 static ssize_t verbosity_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
 	printk("show: verbosity\n");
-	return sprintf(buf, "%u\n", verbosity);
+	return sprintf(buf, "%lu\n", verbosity);
 }
 //static ssize_t fire_show(struct kobject *kobj, struct attribute *attr, char *buf)
 //{
@@ -108,53 +121,92 @@ static ssize_t verbosity_show(struct kobject *kobj, struct attribute *attr, char
 //TODO: check length and return values
 static ssize_t start_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: start\n");
-	strict_strtol(buf, 10, &start);
-	return len;
+	r = strict_strtol(buf, 10, &start);
+	return r ? 0 : len;
 }
 static ssize_t stop_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: stop\n");
-	strict_strtol(buf, 10, &stop);
-	return len;
+	r = strict_strtol(buf, 10, &stop);
+	return r ? 0 : len;
 }
 static ssize_t count_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: count\n");
-	strict_strtoul(buf, 10, &count);
-	return len;
+	r = strict_strtoul(buf, 10, &count);
+	return r ? 0 : len;
 }
 static ssize_t interval_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: interval\n");
-	strict_strtoul(buf, 10, &interval);
-	return len;
+	r = strict_strtoul(buf, 10, &interval);
+	return r ? 0 : len;
 }
 static ssize_t loop_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: loop\n");
-	strict_strtol(buf, 10, &loop);
-	return len;
+	r = strict_strtol(buf, 10, &loop);
+	return r ? 0 : len;
 }
 static ssize_t verbosity_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    int r;
 	printk("store: verbosity\n");
-	strict_strtol(buf, 10, &verbosity);
-	return len;
+	r = strict_strtol(buf, 10, &verbosity);
+	return r ? 0 : len;
 }
 static ssize_t fire_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
+    unsigned long fire;
+    int r;
 	lock = 0;
 	printk("store: fire\n");
-	static u8 fire;
-	strict_strtoul(buf, 10, &fire);
-	if ((fire != 1) || (lock))
+	r = strict_strtoul(buf, 10, &fire);
+	if (r || (fire != 1) || (lock))
 		return -EINVAL;
 	else {
 		do {
 			printk(KERN_ALERT "start toggling\n");
 			gpiotoggling();
 		} while((int)loop);
+	}
+	lock = 0;
+	return len;
+}
+
+static ssize_t pin_on_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
+{
+    unsigned long pin;
+    int r;
+	lock = 0;
+	printk("store: pin_on\n");
+	r = strict_strtoul(buf, 10, &pin);
+	if (r || (lock))
+		return -EINVAL;
+	else {
+		pin_on(pin);
+	}
+	lock = 0;
+	return len;
+}
+
+static ssize_t pin_off_store(struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
+{
+    unsigned long pin;
+    int r;
+	lock = 0;
+	printk("store: pin_off\n");
+	r = strict_strtoul(buf, 10, &pin);
+	if (r || (lock))
+		return -EINVAL;
+	else {
+		pin_off(pin);
 	}
 	lock = 0;
 	return len;
@@ -167,8 +219,8 @@ static DEVICE_ATTR(interval, 0644, interval_show, interval_store);
 static DEVICE_ATTR(loop, 0644, loop_show, loop_store);
 static DEVICE_ATTR(verbosity, 0644, verbosity_show, verbosity_store);
 static DEVICE_ATTR(fire, 0644, NULL, fire_store);
-
-
+static DEVICE_ATTR(pin_on, 0644, NULL, pin_on_store);
+static DEVICE_ATTR(pin_off, 0644, NULL, pin_off_store);
 
 int init_module(void)
 {
@@ -183,6 +235,8 @@ int init_module(void)
 	sysfs_create_file(dev, &dev_attr_loop);
 	sysfs_create_file(dev, &dev_attr_verbosity);
 	sysfs_create_file(dev, &dev_attr_fire);
+	sysfs_create_file(dev, &dev_attr_pin_on);
+	sysfs_create_file(dev, &dev_attr_pin_off);
 
 	return 0;
 }
